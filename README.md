@@ -45,7 +45,7 @@ This system implements modern security best practices:
 
 ```bash
 # Clone or copy the auth module into your project
-cd Auth-System
+cd AuthORS
 
 # Install dependencies
 npm install
