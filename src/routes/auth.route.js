@@ -10,7 +10,7 @@ const authRouter = Router();
 authRouter.post("/register", authController.register)
 
 /**
- * GET /api/auth/login
+ * POST /api/auth/login
  */
 authRouter.post("/login", authController.login)
 
@@ -25,18 +25,18 @@ authRouter.get("/get-me", authController.getMe)
 authRouter.get("/refresh-token", authController.refreshToken)
 
 /**
- * GET /api/auth/logout
+ * POST /api/auth/logout
  */
-authRouter.get("/logout", authController.logout)
+authRouter.post("/logout", authController.logout)
 
 /**
- * GET /api/auth/logout-all
+ * POST /api/auth/logout-all
  */
-authRouter.get("/logout-all", authController.logoutALL)
+authRouter.post("/logout-all", authController.logoutALL)
 
 /**
- * GET /api/auth/verify-email
+ * POST /api/auth/verify-email
  */
-authRouter.get("/verify-email", authController.verifyEmail)
+authRouter.post("/verify-email", authController.verifyEmail)
 
 export default authRouter;
