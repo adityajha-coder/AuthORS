@@ -1,5 +1,6 @@
 import { Router } from "express";
 import * as authController from "../controllers/auth.controller.js";
+import { registerLimiter, loginLimiter, otpLimiter } from "../middleware/ratelimit.middleware.js";
 
 const authRouter = Router();
 
@@ -7,12 +8,12 @@ const authRouter = Router();
 /**
  * POST /api/auth/register
  */
-authRouter.post("/register", authController.register)
+authRouter.post("/register", registerLimiter, authController.register)
 
 /**
  * POST /api/auth/login
  */
-authRouter.post("/login", authController.login)
+authRouter.post("/login", loginLimiter, authController.login)
 
 /**
  * GET /api/auth/get-me
@@ -37,6 +38,6 @@ authRouter.post("/logout-all", authController.logoutALL)
 /**
  * POST /api/auth/verify-email
  */
-authRouter.post("/verify-email", authController.verifyEmail)
+authRouter.post("/verify-email", otpLimiter, authController.verifyEmail)
 
 export default authRouter;

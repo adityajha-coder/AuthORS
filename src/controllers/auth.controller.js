@@ -6,6 +6,7 @@ import sessionModel from "../models/session.model.js";
 import { sendEmail } from "../services/email.service.js";
 import { generateOTP, getOTPHtml } from "../utils/utils.js";
 import otpModel from "../models/otp.model.js";
+import bcrypt from "bcrypt";
 
 export async function register(req, res){
     const { userName, email, password } = req.body;
@@ -22,16 +23,16 @@ export async function register(req, res){
             { userName },
             { email }
         ]
-    })
+    });
 
-    if(isAlreadyRegistered){
-        return res
-        .status(409)
-        .json({message: "Username or email is already registered"}
-        );
+    if (isAlreadyRegistered) {
+        const isEmailTaken = isAlreadyRegistered.email === email;
+        return res.status(409).json({
+            message: isEmailTaken ? "Email is already registered" : "Username is already taken"
+        });
     }
 
-    const hashedPassword = crypto.createHash("sha256").update(password).digest("hex");
+    const hashedPassword = await bcrypt.hash(password, 12);
 
     const user = await userModel.create({
         userName,
@@ -95,9 +96,7 @@ export async function login(req, res){
         })
     }
 
-    const hashedPassword = crypto.createHash("sha256").update(password).digest("hex");
-
-    const isPasswordValid = hashedPassword === user.password;
+    const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if(!isPasswordValid){
         return res.status(401).json({
