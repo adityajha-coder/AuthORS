@@ -36,7 +36,12 @@ This system implements modern security best practices:
 │   │   ├── config.js               # Centralized environment variable validation
 │   │   └── db.js                   # Mongoose database connection
 │   ├── controllers/
-│   │   └── auth.controller.js      # Controller logic (register, login, OTP, tokens, sessions)
+│   │   ├── register.controller.js  # Registration & email verification logic
+│   │   ├── login.controller.js     # Login & profile retrieval (getMe)
+│   │   ├── token.controller.js     # Token rotation, single logout & logout-all
+│   │   └── auth.controller.js      # Aggregator index re-exporting all controllers
+│   ├── emails/
+│   │   └── otp.template.js         # Dedicated responsive HTML email templates
 │   ├── middleware/
 │   │   ├── ratelimit.middleware.js # Rate limiters for login, register, and OTP verification
 │   │   └── validate.middleware.js  # Generic Zod validation middleware
@@ -49,7 +54,8 @@ This system implements modern security best practices:
 │   ├── services/
 │   │   └── email.service.js        # Nodemailer service using Google OAuth2
 │   ├── utils/
-│   │   └── utils.js                # 6-digit OTP generator & responsive HTML email template
+│   │   ├── crypto.utils.js         # Cryptographic helpers (OTP generator, SHA-256 hash)
+│   │   └── utils.js                # Utilities re-exporter
 │   ├── validators/
 │   │   └── auth.validator.js       # Zod schemas for register, login, and verifyEmail
 │   ├── app.js                      # Express app initialization, Helmet, CORS & middleware stack
