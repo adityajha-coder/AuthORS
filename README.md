@@ -1,13 +1,30 @@
-# 🛡️ High-End Production-Ready Authentication System
+# 🛡️ AuthORS — High-End Production-Ready Authentication System (v1.5.0)
 
-A secure, enterprise-grade authentication backend boilerplate built with **Node.js, Express, MongoDB (Mongoose), JWT, and Nodemailer (Google OAuth2)**.
+A secure, enterprise-grade authentication backend boilerplate built with **Node.js, Express, MongoDB (Mongoose), Bcrypt, Zod, Helmet, Express-Rate-Limit, JWT, and Nodemailer (Google OAuth2)**.
 
 This system implements modern security best practices:
 - **Dual-Token Architecture**: Short-lived Access Tokens (15m) + Long-lived Refresh Tokens (7d).
+- **Password Hashing with Bcrypt**: Salted passwords using 12 computational work rounds.
+- **Brute-Force Protection**: IP-based rate limiters on `/login`, `/register`, and `/verify-email`.
+- **Request Validation with Zod**: Strict payload schemas and password complexity enforcement.
+- **HTTP Security Headers with Helmet**: Built-in defense against Clickjacking, MIME-sniffing, and XSS.
+- **CORS with Credentials**: Whitelisted origin access allowing secure `httpOnly` cookie transfer.
 - **Session Management & Token Rotation**: Refresh tokens are SHA-256 hashed and stored in database sessions with IP and User-Agent tracking. Refreshing a token immediately rotates the refresh token.
 - **`httpOnly`, `secure`, `sameSite: strict` Cookies**: Protection against XSS and CSRF token interception.
 - **Email Verification via OTP**: 6-digit OTP sent via Gmail OAuth2, hashed with SHA-256 in MongoDB, with an automatic **10-minute TTL (Time-To-Live) auto-deletion**.
 - **Multi-Device Revocation**: Invalidate a single session or all active sessions across all devices (`/logout-all`).
+
+---
+
+## New in v1.5.0 (Diff from v1.0.0)
+
+| Security & Feature Area | Baseline Version 1.0.0 | Hardened Version 1.5.0 (Current) | Why It Matters |
+| :--- | :--- | :--- | :--- |
+| **Password Hashing** | SHA-256 (`crypto.createHash`) | **Bcrypt (12 Salt Rounds)** | SHA-256 is susceptible to GPU/rainbow-table brute forcing; Bcrypt uses slow, salted key derivation. |
+| **Brute-Force Defense** | No rate limits | **Rate Limiting (`express-rate-limit`)** | Prevents 6-digit OTP guessing (max 3 tries) and credential stuffing on `/login` (max 5 tries). |
+| **Payload Validation** | Basic manual checks | **Zod Schema Validation** | Enforces strong password complexity (min 8 chars, uppercase, number, special char) and trims/normalizes emails. |
+| **HTTP Security Headers** | Default Express headers | **`helmet` Integration** | Injects 11+ security headers (HSTS, CSP, X-Frame-Options against clickjacking, X-Content-Type-Options). |
+| **Cross-Origin Security** | Unconfigured CORS | **Strict CORS with `credentials: true`** | Enables secure cross-origin `httpOnly` cookie handling while blocking unauthorized domains. |
 
 ---
 
@@ -16,24 +33,30 @@ This system implements modern security best practices:
 ```text
 ├── src/
 │   ├── config/
-│   │   ├── config.js          # Centralized environment variable validation
-│   │   └── db.js              # Mongoose database connection
+│   │   ├── config.js               # Centralized environment variable validation
+│   │   └── db.js                   # Mongoose database connection
 │   ├── controllers/
-│   │   └── auth.controller.js # Controller logic (register, login, OTP, tokens, sessions)
+│   │   └── auth.controller.js      # Controller logic (register, login, OTP, tokens, sessions)
+│   ├── middleware/
+│   │   ├── ratelimit.middleware.js # Rate limiters for login, register, and OTP verification
+│   │   └── validate.middleware.js  # Generic Zod validation middleware
 │   ├── models/
-│   │   ├── user.model.js      # User schema (userName, email, password, verified)
-│   │   ├── session.model.js   # Session schema (user, refreshTokenHash, ip, userAgent, revoked)
-│   │   └── otp.model.js       # OTP schema with 10-min MongoDB TTL index
+│   │   ├── user.model.js           # User schema (userName, email, password, verified)
+│   │   ├── session.model.js        # Session schema (user, refreshTokenHash, ip, userAgent, revoked)
+│   │   └── otp.model.js            # OTP schema with 10-min MongoDB TTL index
 │   ├── routes/
-│   │   └── auth.route.js      # Express auth routes
+│   │   └── auth.route.js           # Express auth routes with rate limiters & validators
 │   ├── services/
-│   │   └── email.service.js   # Nodemailer service using Google OAuth2
+│   │   └── email.service.js        # Nodemailer service using Google OAuth2
 │   ├── utils/
-│   │   └── utils.js           # 6-digit OTP generator & responsive HTML email template
-│   ├── app.js                 # Express app initialization & middleware stack
-│   └── server.js              # Server entry point
-├── .env.example               # Environment variables template
+│   │   └── utils.js                # 6-digit OTP generator & responsive HTML email template
+│   ├── validators/
+│   │   └── auth.validator.js       # Zod schemas for register, login, and verifyEmail
+│   ├── app.js                      # Express app initialization, Helmet, CORS & middleware stack
+│   └── server.js                   # Server entry point
+├── .env.example                    # Environment variables template
 ├── package.json
+├── LICENSE                         # ISC License
 └── README.md
 ```
 
@@ -44,7 +67,10 @@ This system implements modern security best practices:
 ### 1. Installation
 
 ```bash
-# Clone or copy the auth module into your project
+# Clone this exact version (v1.5.0) into your project
+git clone --branch v1.5.0 https://github.com/adityajha-coder/AuthORS.git
+
+# Enter the project directory
 cd AuthORS
 
 # Install dependencies
@@ -59,7 +85,7 @@ Create a `.env` file in the root directory:
 cp .env.example .env
 ```
 
-Fill in the `.env` variables (see the [API Keys & Credentials Guide](#-how-to-obtain-all-api-keys--credentials) below).
+Fill in the `.env` variables (see the [Process to Obtain All API Keys & Credentials](#process-to-obtain-all-api-keys--credentials) below).
 
 ### 3. Run the Server
 
@@ -172,10 +198,15 @@ Google no longer allows basic passwords for automated SMTP. Using **OAuth 2.0 wi
 
 #### Step F: Update `.env`
 ```env
+MONGO_URI=mongodb+srv://<username>:<password>@cluster0.mongodb.net/auth_system?retryWrites=true&w=majority
+JWT_SECRET=your_jwt_secret_key
+
 GOOGLE_USER=your_email@gmail.com
 GOOGLE_CLIENT_ID=your_client_id.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=GOCSPX-your_client_secret
-GOOGLE_REFRESH_TOKEN=1//04your_refresh_token
+GOOGLE_CLIENT_SECRET=your_client_secret
+GOOGLE_REFRESH_TOKEN=your_refresh_token
+
+FRONTEND_URL=http://localhost:5173
 ```
 
 ---
@@ -184,15 +215,15 @@ GOOGLE_REFRESH_TOKEN=1//04your_refresh_token
 
 All endpoints are prefixed with `/api/auth`.
 
-| Method | Endpoint | Description | Auth Required |
-| :--- | :--- | :--- | :---: |
-| `POST` | `/api/auth/register` | Register a new user & send 6-digit verification OTP | ❌ No |
-| `POST` | `/api/auth/verify-email` | Verify email using 6-digit OTP & mark account active | ❌ No |
-| `POST` | `/api/auth/login` | Log in user, issue access token & set refresh token cookie | ❌ No |
-| `GET` | `/api/auth/get-me` | Fetch authenticated user details |  Yes (`Bearer <accessToken>`) |
-| `GET` | `/api/auth/refresh-token` | Rotate refresh token & issue a new access token |  Yes (via Cookie) |
-| `POST` | `/api/auth/logout` | Revoke current device session & clear cookie |  Yes (via Cookie) |
-| `POST` | `/api/auth/logout-all` | Revoke all active sessions across all devices |  Yes (via Cookie) |
+| Method | Endpoint | Rate Limit | Request Body Validation (Zod) | Auth Required |
+| :--- | :--- | :---: | :--- | :---: |
+| `POST` | `/api/auth/register` | 5 / hr | `userName` (3-15 chars, alphanumeric), `email`, `password` (min 8 chars, 1 uppercase, 1 number, 1 special char) | ❌ No |
+| `POST` | `/api/auth/verify-email` | 3 / 10m | `email`, `otp` (exactly 6 digits) | ❌ No |
+| `POST` | `/api/auth/login` | 5 / 15m | `email`, `password` | ❌ No |
+| `GET` | `/api/auth/get-me` | None | None |  Yes (`Bearer <accessToken>`) |
+| `GET` | `/api/auth/refresh-token` | None | None |  Yes (via Cookie) |
+| `POST` | `/api/auth/logout` | None | None |  Yes (via Cookie) |
+| `POST` | `/api/auth/logout-all` | None | None |  Yes (via Cookie) |
 
 ---
 
@@ -204,7 +235,7 @@ All endpoints are prefixed with `/api/auth`.
 // Request Body
 {
   "userName": "adityajha",
-  "email": "adityajha@example.com",
+  "email": "aditya@example.com",
   "password": "StrongPassword123!"
 }
 
@@ -213,7 +244,7 @@ All endpoints are prefixed with `/api/auth`.
   "message": "User registered successfully",
   "user": {
     "userName": "adityajha",
-    "email": "adityajha@example.com",
+    "email": "aditya@example.com",
     "verified": false
   }
 }
@@ -224,7 +255,7 @@ All endpoints are prefixed with `/api/auth`.
 ```json
 // Request Body
 {
-  "email": "adityajha@example.com",
+  "email": "aditya@example.com",
   "otp": "492817"
 }
 
@@ -233,7 +264,7 @@ All endpoints are prefixed with `/api/auth`.
   "message": "Email verified successfully",
   "user": {
     "userName": "adityajha",
-    "email": "adityajha@example.com",
+    "email": "aditya@example.com",
     "verified": true
   }
 }
@@ -244,7 +275,7 @@ All endpoints are prefixed with `/api/auth`.
 ```json
 // Request Body
 {
-  "email": "adityajha@example.com",
+  "email": "aditya@example.com",
   "password": "StrongPassword123!"
 }
 
@@ -254,7 +285,7 @@ All endpoints are prefixed with `/api/auth`.
   "message": "Logged in successfully",
   "user": {
     "userName": "adityajha",
-    "email": "adityajha@example.com"
+    "email": "aditya@example.com"
   },
   "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 }
@@ -271,7 +302,7 @@ Authorization: Bearer <accessToken>
   "message": "User fetched successfully",
   "user": {
     "userName": "adityajha",
-    "email": "adityajha@example.com"
+    "email": "aditya@example.com"
   }
 }
 ```
@@ -320,15 +351,24 @@ Cookie: refreshToken=<refreshToken>
 1. **Copy the `src/` folder** into your new project.
 2. **Install the required packages**:
    ```bash
-   npm install express mongoose dotenv jsonwebtoken cookie-parser morgan nodemailer
+   npm install express mongoose dotenv jsonwebtoken cookie-parser morgan nodemailer bcrypt zod helmet cors express-rate-limit
    ```
 3. **Mount the auth router** in your main `app.js`:
    ```javascript
    import express from "express";
    import cookieParser from "cookie-parser";
+   import helmet from "helmet";
+   import cors from "cors";
    import authRouter from "./routes/auth.route.js";
 
    const app = express();
+
+   app.use(helmet());
+   app.use(cors({
+       origin: ["http://localhost:3000", "http://localhost:5173", process.env.FRONTEND_URL].filter(Boolean),
+       credentials: true
+   }));
+
    app.use(express.json());
    app.use(cookieParser());
 
