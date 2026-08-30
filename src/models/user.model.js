@@ -13,13 +13,33 @@ const userSchema = new mongoose.Schema({
     },
     password: {
         type: String,
-        required: [true, "Password is required"],
+        required: function () {
+            return this.authProvider === "local";
+        },
+    },
+    googleId: {
+        type: String,
+        unique: true,
+        sparse: true,
+    },
+    githubId: {
+        type: String,
+        unique: true,
+        sparse: true,
+    },
+    avatar: {
+        type: String,
+    },
+    authProvider: {
+        type: String,
+        enum: ["local", "google", "github"],
+        default: "local",
     },
     verified: {
         type: Boolean,
         default: false
-    }
-})
+    },
+}, { timestamps: true });
 
 const userModel = mongoose.model("users", userSchema)
 

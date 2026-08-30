@@ -1,12 +1,13 @@
-# 🛡️ AuthORS — High-End Production-Ready Authentication System (v1.5.0)
+# 🛡️ AuthORS — High-End Production-Ready Authentication System (v2.0.0)
 
 A secure, enterprise-grade authentication backend boilerplate built with **Node.js, Express, MongoDB (Mongoose), Bcrypt, Zod, Helmet, Express-Rate-Limit, JWT, and Nodemailer (Google OAuth2)**.
 
 This system implements modern security best practices:
 - **Dual-Token Architecture**: Short-lived Access Tokens (15m) + Long-lived Refresh Tokens (7d).
 - **Password Hashing with Bcrypt**: Salted passwords using 12 computational work rounds.
-- **Brute-Force Protection**: IP-based rate limiters on `/login`, `/register`, and `/verify-email`.
-- **Request Validation with Zod**: Strict payload schemas and password complexity enforcement.
+- **Forgot & Reset Password Flow**: High-entropy 32-byte cryptographic reset tokens with a 15-minute MongoDB TTL auto-expiry and automatic multi-device session revocation.
+- **Brute-Force Protection**: IP-based rate limiters on `/login`, `/register`, `/verify-email`, and `/forgot-password`.
+- **Request Validation with Zod**: Strict payload schemas, input sanitization, and password complexity enforcement.
 - **HTTP Security Headers with Helmet**: Built-in defense against Clickjacking, MIME-sniffing, and XSS.
 - **CORS with Credentials**: Whitelisted origin access allowing secure `httpOnly` cookie transfer.
 - **Session Management & Token Rotation**: Refresh tokens are SHA-256 hashed and stored in database sessions with IP and User-Agent tracking. Refreshing a token immediately rotates the refresh token.
@@ -16,15 +17,17 @@ This system implements modern security best practices:
 
 ---
 
-## New in v1.5.0 (Diff from v1.0.0)
+## Version Evolution (Diff from v1.0.0 & v1.5.0)
 
-| Security & Feature Area | Baseline Version 1.0.0 | Hardened Version 1.5.0 (Current) | Why It Matters |
-| :--- | :--- | :--- | :--- |
-| **Password Hashing** | SHA-256 (`crypto.createHash`) | **Bcrypt (12 Salt Rounds)** | SHA-256 is susceptible to GPU/rainbow-table brute forcing; Bcrypt uses slow, salted key derivation. |
-| **Brute-Force Defense** | No rate limits | **Rate Limiting (`express-rate-limit`)** | Prevents 6-digit OTP guessing (max 3 tries) and credential stuffing on `/login` (max 5 tries). |
-| **Payload Validation** | Basic manual checks | **Zod Schema Validation** | Enforces strong password complexity (min 8 chars, uppercase, number, special char) and trims/normalizes emails. |
-| **HTTP Security Headers** | Default Express headers | **`helmet` Integration** | Injects 11+ security headers (HSTS, CSP, X-Frame-Options against clickjacking, X-Content-Type-Options). |
-| **Cross-Origin Security** | Unconfigured CORS | **Strict CORS with `credentials: true`** | Enables secure cross-origin `httpOnly` cookie handling while blocking unauthorized domains. |
+| Security & Feature Area | Baseline Version 1.0.0 | Hardened Version 1.5.0 | Version 2.0.0 (Current) | Why It Matters |
+| :--- | :--- | :--- | :--- | :--- |
+| **Password Lifecycle** | Basic registration only | Bcrypt (12 Salt Rounds) | **Bcrypt + Forgot & Reset Password Flow** | Users can securely recover lost passwords via one-time cryptographically signed email links. |
+| **Architecture Layout** | Monolithic controller | Monolithic controller | **Modular Single-Responsibility Structure** | Split into dedicated controllers, email templates, validators, and crypto utilities. |
+| **Password Hashing** | SHA-256 (`crypto.createHash`) | Bcrypt (12 Salt Rounds) | **Bcrypt (12 Salt Rounds)** | Protects against GPU and rainbow table brute-forcing. |
+| **Brute-Force Defense** | No rate limits | Rate Limiting (`express-rate-limit`) | **Rate Limiting on all sensitive endpoints** | Prevents OTP guessing, password reset email bombing, and credential stuffing. |
+| **Payload Validation** | Basic manual checks | Zod Schema Validation | **Modular Zod Schemas (`auth`, `password`)** | Enforces strong password rules, validates email formats, and strips invalid fields. |
+| **HTTP Security Headers** | Default Express headers | `helmet` Integration | **`helmet` Integration** | Injects 11+ defensive headers (HSTS, CSP, X-Frame-Options against clickjacking). |
+| **Cross-Origin Security** | Unconfigured CORS | Strict CORS with `credentials: true` | **Strict CORS with `credentials: true`** | Enables secure cross-origin `httpOnly` cookie handling while blocking unauthorized domains. |
 
 ---
 
@@ -33,36 +36,40 @@ This system implements modern security best practices:
 ```text
 ├── src/
 │   ├── config/
-│   │   ├── config.js               # Centralized environment variable validation
-│   │   └── db.js                   # Mongoose database connection
+│   │   ├── config.js                  # Centralized environment variable validation
+│   │   └── db.js                      # Mongoose database connection
 │   ├── controllers/
-│   │   ├── register.controller.js  # Registration & email verification logic
-│   │   ├── login.controller.js     # Login & profile retrieval (getMe)
-│   │   ├── token.controller.js     # Token rotation, single logout & logout-all
-│   │   └── auth.controller.js      # Aggregator index re-exporting all controllers
+│   │   ├── register.controller.js     # Registration & email verification logic
+│   │   ├── login.controller.js        # Login & profile retrieval (getMe)
+│   │   ├── token.controller.js        # Token rotation, single logout & logout-all
+│   │   ├── password.controller.js     # Forgot password & secure password reset flow
+│   │   └── auth.controller.js         # Aggregator index re-exporting all controllers
 │   ├── emails/
-│   │   └── otp.template.js         # Dedicated responsive HTML email templates
+│   │   ├── otp.template.js            # Dedicated responsive HTML OTP email template
+│   │   └── resetPassword.template.js  # Dedicated responsive HTML password reset email template
 │   ├── middleware/
-│   │   ├── ratelimit.middleware.js # Rate limiters for login, register, and OTP verification
-│   │   └── validate.middleware.js  # Generic Zod validation middleware
+│   │   ├── ratelimit.middleware.js    # Rate limiters for login, register, OTP, and password reset
+│   │   └── validate.middleware.js     # Generic Zod validation middleware
 │   ├── models/
-│   │   ├── user.model.js           # User schema (userName, email, password, verified)
-│   │   ├── session.model.js        # Session schema (user, refreshTokenHash, ip, userAgent, revoked)
-│   │   └── otp.model.js            # OTP schema with 10-min MongoDB TTL index
+│   │   ├── user.model.js              # User schema (userName, email, password, verified)
+│   │   ├── session.model.js           # Session schema (user, refreshTokenHash, ip, userAgent, revoked)
+│   │   ├── otp.model.js               # OTP schema with 10-min MongoDB TTL index
+│   │   └── passwordReset.model.js     # Password reset tokens with 15-min MongoDB TTL index
 │   ├── routes/
-│   │   └── auth.route.js           # Express auth routes with rate limiters & validators
+│   │   └── auth.route.js              # Express auth routes with rate limiters & validators
 │   ├── services/
-│   │   └── email.service.js        # Nodemailer service using Google OAuth2
+│   │   └── email.service.js           # Nodemailer service using Google OAuth2
 │   ├── utils/
-│   │   ├── crypto.utils.js         # Cryptographic helpers (OTP generator, SHA-256 hash)
-│   │   └── utils.js                # Utilities re-exporter
+│   │   ├── crypto.utils.js            # Cryptographic helpers (OTP generator, SHA-256, random tokens)
+│   │   └── utils.js                   # Utilities re-exporter
 │   ├── validators/
-│   │   └── auth.validator.js       # Zod schemas for register, login, and verifyEmail
-│   ├── app.js                      # Express app initialization, Helmet, CORS & middleware stack
-│   └── server.js                   # Server entry point
-├── .env.example                    # Environment variables template
+│   │   ├── auth.validator.js          # Zod schemas for register, login, and verifyEmail
+│   │   └── password.validator.js      # Zod schemas for forgotPassword and resetPassword
+│   ├── app.js                         # Express app initialization, Helmet, CORS & middleware stack
+│   └── server.js                      # Server entry point
+├── .env.example                       # Environment variables template
 ├── package.json
-├── LICENSE                         # ISC License
+├── LICENSE                            # ISC License
 └── README.md
 ```
 
@@ -73,8 +80,8 @@ This system implements modern security best practices:
 ### 1. Installation
 
 ```bash
-# Clone this exact version (v1.5.0) into your project
-git clone --branch v1.5.0 https://github.com/adityajha-coder/AuthORS.git
+# Clone this exact version (v2.0.0) into your project
+git clone --branch auth-v2 https://github.com/adityajha-coder/AuthORS.git
 
 # Enter the project directory
 cd AuthORS
@@ -230,10 +237,16 @@ All endpoints are prefixed with `/api/auth`.
 | `GET` | `/api/auth/refresh-token` | None | None |  Yes (via Cookie) |
 | `POST` | `/api/auth/logout` | None | None |  Yes (via Cookie) |
 | `POST` | `/api/auth/logout-all` | None | None |  Yes (via Cookie) |
+| `POST` | `/api/auth/forgot-password` | 3 / hr | `email` (valid email string) | ❌ No |
+| `POST` | `/api/auth/reset-password` | None | `email`, `token` (min 32 chars), `password` (min 8 chars, 1 uppercase, 1 number, 1 special char) | ❌ No |
+| `GET` | `/api/auth/google` | None | None (Redirects to Google consent screen) | ❌ No |
+| `GET` | `/api/auth/google/callback` | None | OAuth authorization code | ❌ No |
+| `GET` | `/api/auth/github` | None | None (Redirects to GitHub consent screen) | ❌ No |
+| `GET` | `/api/auth/github/callback` | None | OAuth authorization code | ❌ No |
 
 ---
 
-### Request & Response Examples (v1.5.0)
+### Request & Response Examples (v2.0.0)
 
 #### 1. Register User
 `POST /api/auth/register`
@@ -314,13 +327,6 @@ All endpoints are prefixed with `/api/auth`.
 }
 ```
 
-```json
-// Rate Limit Error (429 Too Many Requests)
-{
-  "message": "Too many otp verification attempts, please request new otp or try again in 10 minutes."
-}
-```
-
 ---
 
 #### 3. Login
@@ -359,16 +365,59 @@ All endpoints are prefixed with `/api/auth`.
 }
 ```
 
+---
+
+#### 4. Forgot Password
+`POST /api/auth/forgot-password`
+
+```json
+// Request Body
+{
+  "email": "aditya@example.com"
+}
+
+// Success Response (200 OK)
+{
+  "message": "If an account with that email exists, a password reset link has been sent."
+}
+```
+
 ```json
 // Rate Limit Error (429 Too Many Requests)
 {
-  "message": "Too many login attempts. Please try again after 15 minutes."
+  "message": "Too many password reset requests. Please try again after an hour."
 }
 ```
 
 ---
 
-#### 4. Get Current User Profile
+#### 5. Reset Password
+`POST /api/auth/reset-password`
+
+```json
+// Request Body
+{
+  "email": "aditya@example.com",
+  "token": "3a2d635651159aef4f5fafd55686b6b9636d53b044e58913932148acf078e97a",
+  "password": "NewStrongPassword123!"
+}
+
+// Success Response (200 OK)
+{
+  "message": "Password reset successful. All active sessions have been revoked. Please log in with your new password."
+}
+```
+
+```json
+// Invalid / Expired Token Response (400 Bad Request)
+{
+  "message": "Invalid or expired password reset link"
+}
+```
+
+---
+
+#### 6. Get Current User Profile
 `GET /api/auth/get-me`
 
 ```http
@@ -385,16 +434,9 @@ Authorization: Bearer <accessToken>
 }
 ```
 
-```json
-// Unauthorized Response (401 Unauthorized) - e.g. Expired Token
-{
-  "message": "Invalid or expired token"
-}
-```
-
 ---
 
-#### 5. Refresh Access Token (Token Rotation)
+#### 7. Refresh Access Token (Token Rotation)
 `GET /api/auth/refresh-token`
 
 ```http
@@ -408,16 +450,9 @@ Cookie: refreshToken=<refreshToken>
 }
 ```
 
-```json
-// Invalid Session / Token Error (401 Unauthorized)
-{
-  "message": "Invalid or expired refresh token"
-}
-```
-
 ---
 
-#### 6. Logout Current Device
+#### 8. Logout Current Device
 `POST /api/auth/logout`
 
 ```http
@@ -432,7 +467,7 @@ Cookie: refreshToken=<refreshToken>
 
 ---
 
-#### 7. Logout All Devices
+#### 9. Logout All Devices
 `POST /api/auth/logout-all`
 
 ```http
