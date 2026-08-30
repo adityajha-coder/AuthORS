@@ -9,7 +9,7 @@
     "dev": "npx nodemon src/server.js"
   },
   "keywords": [],
-  "author": "",
+  "author": "Aditya Jha",
   "license": "ISC",
   "dependencies": {
     "cookie-parser": "^1.4.7",
