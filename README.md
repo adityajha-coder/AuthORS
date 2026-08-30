@@ -1,4 +1,4 @@
-# 🛡️ High-End Production-Ready Authentication System
+# 🛡️ AuthORS : High-End Production-Ready Authentication System(v1.0.0)
 
 A secure, enterprise-grade authentication backend boilerplate built with **Node.js, Express, MongoDB (Mongoose), JWT, and Nodemailer (Google OAuth2)**.
 
@@ -44,6 +44,10 @@ This system implements modern security best practices:
 ### 1. Installation
 
 ```bash
+
+# Clone this exact version (v1.0.0) into your project
+git clone --branch v1.0.0 https://github.com/adityajha-coder/AuthORS.git
+
 # Clone or copy the auth module into your project
 cd AuthORS
 
