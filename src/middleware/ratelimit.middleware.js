@@ -32,3 +32,14 @@ export const otpLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
 });
+
+// Rate limiter for Password Reset requests (Max 3 requests per hour)
+export const passwordResetLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 3,
+    message: {
+        message: "Too many password reset requests. Please try again after an hour."
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+});

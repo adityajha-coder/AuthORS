@@ -1,8 +1,9 @@
 import { Router } from "express";
 import * as authController from "../controllers/auth.controller.js";
-import { registerLimiter, loginLimiter, otpLimiter } from "../middleware/ratelimit.middleware.js";
+import { registerLimiter, loginLimiter, otpLimiter, passwordResetLimiter } from "../middleware/ratelimit.middleware.js";
 import { validate } from "../middleware/validate.middleware.js";
 import { registerSchema, loginSchema, verifyEmailSchema } from "../validators/auth.validator.js";
+import { forgotPasswordSchema, resetPasswordSchema } from "../validators/password.validator.js";
 
 const authRouter = Router();
 
@@ -41,5 +42,15 @@ authRouter.post("/logout-all", authController.logoutALL)
  * POST /api/auth/verify-email
  */
 authRouter.post("/verify-email", otpLimiter, validate(verifyEmailSchema), authController.verifyEmail)
+
+/**
+ * POST /api/auth/forget-password
+ */
+authRouter.post("/forgot-password", passwordResetLimiter, validate(forgotPasswordSchema), authController.forgotPassword);
+
+/**
+ * POST /api/auth/reset-password
+ */
+authRouter.post("/reset-password", validate(resetPasswordSchema), authController.resetPassword);
 
 export default authRouter;
