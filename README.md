@@ -227,10 +227,11 @@ All endpoints are prefixed with `/api/auth`.
 
 ---
 
-### Request & Response Examples
+### Request & Response Examples (v1.5.0)
 
 #### 1. Register User
 `POST /api/auth/register`
+
 ```json
 // Request Body
 {
@@ -239,7 +240,7 @@ All endpoints are prefixed with `/api/auth`.
   "password": "StrongPassword123!"
 }
 
-// Response (201 Created)
+// Success Response (201 Created)
 {
   "message": "User registered successfully",
   "user": {
@@ -250,8 +251,38 @@ All endpoints are prefixed with `/api/auth`.
 }
 ```
 
+```json
+// Validation Error Response (400 Bad Request) - e.g. Weak Password
+{
+  "message": "Password must contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character (@$!%*?&)",
+  "errors": [
+    {
+      "field": "password",
+      "message": "Password must contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character (@$!%*?&)"
+    }
+  ]
+}
+```
+
+```json
+// Duplicate Error Response (409 Conflict)
+{
+  "message": "Email is already registered"
+}
+```
+
+```json
+// Rate Limit Error (429 Too Many Requests)
+{
+  "message": "Too many accounts created, please try again after an hour."
+}
+```
+
+---
+
 #### 2. Verify Email
 `POST /api/auth/verify-email`
+
 ```json
 // Request Body
 {
@@ -259,7 +290,7 @@ All endpoints are prefixed with `/api/auth`.
   "otp": "492817"
 }
 
-// Response (200 OK)
+// Success Response (200 OK)
 {
   "message": "Email verified successfully",
   "user": {
@@ -270,8 +301,25 @@ All endpoints are prefixed with `/api/auth`.
 }
 ```
 
+```json
+// Invalid OTP / Expired Response (400 Bad Request)
+{
+  "message": "Invalid OTP"
+}
+```
+
+```json
+// Rate Limit Error (429 Too Many Requests)
+{
+  "message": "Too many otp verification attempts, please request new otp or try again in 10 minutes."
+}
+```
+
+---
+
 #### 3. Login
 `POST /api/auth/login`
+
 ```json
 // Request Body
 {
@@ -279,8 +327,8 @@ All endpoints are prefixed with `/api/auth`.
   "password": "StrongPassword123!"
 }
 
-// Response (200 OK)
-// Set-Cookie: refreshToken=...; HttpOnly; Secure; SameSite=Strict; Max-Age=604800
+// Success Response (200 OK)
+// Set-Cookie: refreshToken=<7d_JWT_Token>; HttpOnly; Secure; SameSite=Strict; Max-Age=604800
 {
   "message": "Logged in successfully",
   "user": {
@@ -291,13 +339,37 @@ All endpoints are prefixed with `/api/auth`.
 }
 ```
 
+```json
+// Unverified Account Response (401 Unauthorized)
+{
+  "message": "Email not verified"
+}
+```
+
+```json
+// Invalid Credentials Response (401 Unauthorized)
+{
+  "message": "Invalid email or password"
+}
+```
+
+```json
+// Rate Limit Error (429 Too Many Requests)
+{
+  "message": "Too many login attempts. Please try again after 15 minutes."
+}
+```
+
+---
+
 #### 4. Get Current User Profile
 `GET /api/auth/get-me`
+
 ```http
 Headers:
 Authorization: Bearer <accessToken>
 
-// Response (200 OK)
+// Success Response (200 OK)
 {
   "message": "User fetched successfully",
   "user": {
@@ -307,37 +379,60 @@ Authorization: Bearer <accessToken>
 }
 ```
 
-#### 5. Refresh Access Token
+```json
+// Unauthorized Response (401 Unauthorized) - e.g. Expired Token
+{
+  "message": "Invalid or expired token"
+}
+```
+
+---
+
+#### 5. Refresh Access Token (Token Rotation)
 `GET /api/auth/refresh-token`
+
 ```http
 Cookie: refreshToken=<refreshToken>
 
-// Response (200 OK)
-// Set-Cookie: refreshToken=<newRefreshToken>; HttpOnly; Secure; SameSite=Strict; Max-Age=604800
+// Success Response (200 OK)
+// Set-Cookie: refreshToken=<newRotatedRefreshToken>; HttpOnly; Secure; SameSite=Strict; Max-Age=604800
 {
   "message": "Access token refreshed successfully",
   "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 }
 ```
 
+```json
+// Invalid Session / Token Error (401 Unauthorized)
+{
+  "message": "Invalid or expired refresh token"
+}
+```
+
+---
+
 #### 6. Logout Current Device
 `POST /api/auth/logout`
+
 ```http
 Cookie: refreshToken=<refreshToken>
 
-// Response (200 OK)
+// Success Response (200 OK)
 // Set-Cookie: refreshToken=; Max-Age=0
 {
   "message": "Logged out successfully"
 }
 ```
 
+---
+
 #### 7. Logout All Devices
 `POST /api/auth/logout-all`
+
 ```http
 Cookie: refreshToken=<refreshToken>
 
-// Response (200 OK)
+// Success Response (200 OK)
 // Set-Cookie: refreshToken=; Max-Age=0
 {
   "message": "Logged out from all devices successfully"
@@ -363,6 +458,7 @@ Cookie: refreshToken=<refreshToken>
 
    const app = express();
 
+   // Security headers & CORS
    app.use(helmet());
    app.use(cors({
        origin: ["http://localhost:3000", "http://localhost:5173", process.env.FRONTEND_URL].filter(Boolean),
@@ -372,6 +468,7 @@ Cookie: refreshToken=<refreshToken>
    app.use(express.json());
    app.use(cookieParser());
 
+   // Routes
    app.use("/api/auth", authRouter);
    ```
 4. **Copy `.env.example`** to `.env` and set your credentials.
