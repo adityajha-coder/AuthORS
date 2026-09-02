@@ -7,6 +7,9 @@ import cors from "cors";
 
 const app = express();
 
+// Trust reverse proxy 
+app.set("trust proxy", 1);
+
 app.use(helmet());
 
 const allowedOrigins = [
