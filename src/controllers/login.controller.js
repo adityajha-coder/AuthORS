@@ -1,4 +1,5 @@
 import bcrypt from "bcrypt";
+import argon2 from "argon2";
 import jwt from "jsonwebtoken";
 import config from "../config/config.js";
 import crypto from "crypto";
@@ -24,7 +25,19 @@ export async function login(req, res) {
         });
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    let isPasswordValid = false;
+    if (user.password.startsWith("$argon2")) {
+        isPasswordValid = await argon2.verify(user.password, password);
+    } else {
+        isPasswordValid = await bcrypt.compare(password, user.password);
+
+        if(isPasswordValid){
+            user.password = await argon2.hash(password, {
+                type: argon2.argon2id,
+            });
+            await user.save();
+        }
+    }
 
     if (!isPasswordValid) {
         return res.status(401).json({
