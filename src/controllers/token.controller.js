@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import config from "../config/config.js";
 import sessionModel from "../models/session.model.js";
+import { logSecurityEvent } from "../services/audit.service.js";
 import { hashSHA256 } from "../utils/crypto.utils.js";
 
 
@@ -35,6 +36,13 @@ export async function refreshToken(req, res) {
     }
 
     if(session.isUsed || session.revoked){
+        logSecurityEvent({
+            event: "TOKEN_REUSE_ATTACK_DETECTED",
+            user: session.user,
+            status: "CRITICAL",
+            req,
+            details: { familyId: session.familyId, attemptedHash: refreshTokenHash }
+        });
         await sessionModel.updateMany(
             {
                 familyId: session.familyId,
@@ -112,6 +120,13 @@ export async function logout(req, res) {
     });
 
     if(session){
+        logSecurityEvent({
+            event: "LOGOUT",
+            user: session.user,
+            status: "SUCCESS",
+            req,
+            details: { familyId: session.familyId }
+        });
         await sessionModel.updateMany(
             {
                 familyId: session.familyId,
@@ -158,6 +173,13 @@ export async function logoutALL(req, res) {
             revoked: true
         }
     );
+
+    await logSecurityEvent({
+        event: "LOGOUT_ALL",
+        user: decoded.id,
+        status: "SUCCESS",
+        req,
+    });
 
     res.clearCookie("refreshToken");
 

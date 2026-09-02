@@ -5,6 +5,7 @@ import config from "../config/config.js";
 import crypto from "crypto";
 import userModel from "../models/user.model.js";
 import sessionModel from "../models/session.model.js";
+import { logSecurityEvent } from "../services/audit.service.js";
 import { hashSHA256 } from "../utils/crypto.utils.js";
 
 
@@ -40,6 +41,14 @@ export async function login(req, res) {
     }
 
     if (!isPasswordValid) {
+        logSecurityEvent({
+            event: "LOGIN_FAILED",
+            email,
+            user: user?._id,
+            status: "FAILURE",
+            req,
+            details: { reason: "Invalid credentials" }
+        });
         return res.status(401).json({
             message: "Invalid email or password"
         });
@@ -77,6 +86,14 @@ export async function login(req, res) {
         secure: true,
         sameSite: "strict",
         maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
+    await logSecurityEvent({
+        event: "LOGIN_SUCCESS",
+        user,
+        status: "SUCCESS",
+        req,
+        details: { familyId }
     });
 
     return res.status(200).json({
