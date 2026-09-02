@@ -26,7 +26,6 @@ export async function refreshToken(req, res) {
 
     const session = await sessionModel.findOne({
         refreshTokenHash,
-        revoked: false
     });
 
     if (!session) {
@@ -35,11 +34,26 @@ export async function refreshToken(req, res) {
         });
     }
 
-    const accessToken = jwt.sign(
-        { id: decoded.id },
-        config.JWT_SECRET,
-        { expiresIn: "15m" }
-    );
+    if(session.isUsed || session.revoked){
+        await sessionModel.updateMany(
+            {
+                familyId: session.familyId,
+                revoked: false,
+            },
+            {
+                revoked: true,
+            }
+        );
+
+        res.clearCookie("refreshToken")
+
+        return res.status(403).json({
+            message: "Suspicious activity detected. All active sessions for this device have been terminated for security. Please login again."
+        });
+    }
+
+    session.isUsed = true;
+    await session.save();
 
     const newRefreshToken = jwt.sign(
         { id: decoded.id },
@@ -49,8 +63,24 @@ export async function refreshToken(req, res) {
 
     const newRefreshTokenHash = hashSHA256(newRefreshToken);
 
-    session.refreshTokenHash = newRefreshTokenHash;
-    await session.save();
+    const newSession = await sessionModel.create({
+        user: session.user,
+        familyId: session.familyId,
+        refreshTokenHash: newRefreshTokenHash,
+        ip: req.ip,
+        userAgent: req.headers["user-agent"],
+        isUsed: false,
+        revoked: false,
+    })
+
+    const accessToken = jwt.sign(
+        { 
+            id: decoded.id,
+            sessionId: newSession._id,
+        },
+        config.JWT_SECRET,
+        { expiresIn: "15m" }
+    );
 
     res.cookie("refreshToken", newRefreshToken, {
         httpOnly: true,
@@ -81,14 +111,17 @@ export async function logout(req, res) {
         revoked: false
     });
 
-    if (!session) {
-        return res.status(400).json({
-            message: "Invalid refresh token"
-        });
+    if(session){
+        await sessionModel.updateMany(
+            {
+                familyId: session.familyId,
+                revoked: false
+            },
+            {
+                revoked: true
+            }
+        );
     }
-
-    session.revoked = true;
-    await session.save();
 
     res.clearCookie("refreshToken");
 

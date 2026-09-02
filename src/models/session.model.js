@@ -7,9 +7,18 @@ const sessionSchema = new mongoose.Schema({
         ref: "users",
         required: [ true, "User is required" ]
     },
+    familyId: {
+        type: String,
+        required: [true, "Family ID is required"],
+        index: true,
+    },
     refreshTokenHash: {
         type: String,
         required: [ true, "Refresh token hash is required"]
+    },
+    isUsed: {
+        type: Boolean,
+        default: false,
     },
     ip: {
         type: String,

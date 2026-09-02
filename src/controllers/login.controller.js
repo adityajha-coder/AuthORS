@@ -1,6 +1,7 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import config from "../config/config.js";
+import crypto from "crypto";
 import userModel from "../models/user.model.js";
 import sessionModel from "../models/session.model.js";
 import { hashSHA256 } from "../utils/crypto.utils.js";
@@ -39,8 +40,11 @@ export async function login(req, res) {
 
     const refreshTokenHash = hashSHA256(refreshToken);
 
+    const familyId = crypto.randomUUID();
+
     const session = await sessionModel.create({
         user: user._id,
+        familyId,
         refreshTokenHash,
         ip: req.ip,
         userAgent: req.headers["user-agent"]
