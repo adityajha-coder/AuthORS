@@ -39,6 +39,29 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    twoFactorEnabled: {
+        type: Boolean,
+        default: false,
+    },
+    twoFactorSecret: {
+        type: String,
+        default: null,
+    },
+    twoFactorTempSecret: {
+        type: String,
+        default: null,
+    },
+    twoFactorLastUsed: {
+        type: Number,
+        default: 0,
+    },
+    twoFactorBackupCodes: [
+        {
+            codeHash: { type: String, required: true },
+            used: { type: Boolean, default: false },
+            usedAt: { type: Date, default: null },
+        }
+    ],
 }, { timestamps: true });
 
 const userModel = mongoose.model("users", userSchema)

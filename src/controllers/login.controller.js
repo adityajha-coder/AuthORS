@@ -64,6 +64,20 @@ export async function login(req, res) {
 
     const familyId = crypto.randomUUID();
 
+    if (user.twoFactorEnabled) {
+        const preAuthToken = jwt.sign(
+            { id: user._id, stage: "2FA_PENDING" },
+            config.JWT_SECRET,
+            { expiresIn: "5m" }
+        );
+        return res.status(200).json({
+            require2FA: true,
+            preAuthToken,
+            message: "Two-factor authentication required. Verify with your 6-digit code or backup code.",
+        });
+    }
+
+
     const session = await sessionModel.create({
         user: user._id,
         familyId,
