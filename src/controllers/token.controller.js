@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import config from "../config/config.js";
 import sessionModel from "../models/session.model.js";
+import { logSecurityEvent } from "../services/audit.service.js";
 import { hashSHA256 } from "../utils/crypto.utils.js";
 
 
@@ -26,7 +27,6 @@ export async function refreshToken(req, res) {
 
     const session = await sessionModel.findOne({
         refreshTokenHash,
-        revoked: false
     });
 
     if (!session) {
@@ -35,11 +35,33 @@ export async function refreshToken(req, res) {
         });
     }
 
-    const accessToken = jwt.sign(
-        { id: decoded.id },
-        config.JWT_SECRET,
-        { expiresIn: "15m" }
-    );
+    if(session.isUsed || session.revoked){
+        logSecurityEvent({
+            event: "TOKEN_REUSE_ATTACK_DETECTED",
+            user: session.user,
+            status: "CRITICAL",
+            req,
+            details: { familyId: session.familyId, attemptedHash: refreshTokenHash }
+        });
+        await sessionModel.updateMany(
+            {
+                familyId: session.familyId,
+                revoked: false,
+            },
+            {
+                revoked: true,
+            }
+        );
+
+        res.clearCookie("refreshToken")
+
+        return res.status(403).json({
+            message: "Suspicious activity detected. All active sessions for this device have been terminated for security. Please login again."
+        });
+    }
+
+    session.isUsed = true;
+    await session.save();
 
     const newRefreshToken = jwt.sign(
         { id: decoded.id },
@@ -49,8 +71,24 @@ export async function refreshToken(req, res) {
 
     const newRefreshTokenHash = hashSHA256(newRefreshToken);
 
-    session.refreshTokenHash = newRefreshTokenHash;
-    await session.save();
+    const newSession = await sessionModel.create({
+        user: session.user,
+        familyId: session.familyId,
+        refreshTokenHash: newRefreshTokenHash,
+        ip: req.ip,
+        userAgent: req.headers["user-agent"],
+        isUsed: false,
+        revoked: false,
+    })
+
+    const accessToken = jwt.sign(
+        { 
+            id: decoded.id,
+            sessionId: newSession._id,
+        },
+        config.JWT_SECRET,
+        { expiresIn: "15m" }
+    );
 
     res.cookie("refreshToken", newRefreshToken, {
         httpOnly: true,
@@ -81,14 +119,24 @@ export async function logout(req, res) {
         revoked: false
     });
 
-    if (!session) {
-        return res.status(400).json({
-            message: "Invalid refresh token"
+    if(session){
+        logSecurityEvent({
+            event: "LOGOUT",
+            user: session.user,
+            status: "SUCCESS",
+            req,
+            details: { familyId: session.familyId }
         });
+        await sessionModel.updateMany(
+            {
+                familyId: session.familyId,
+                revoked: false
+            },
+            {
+                revoked: true
+            }
+        );
     }
-
-    session.revoked = true;
-    await session.save();
 
     res.clearCookie("refreshToken");
 
@@ -125,6 +173,13 @@ export async function logoutALL(req, res) {
             revoked: true
         }
     );
+
+    await logSecurityEvent({
+        event: "LOGOUT_ALL",
+        user: decoded.id,
+        status: "SUCCESS",
+        req,
+    });
 
     res.clearCookie("refreshToken");
 

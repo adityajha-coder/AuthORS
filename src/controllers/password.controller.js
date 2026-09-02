@@ -1,4 +1,4 @@
-import bcrypt from "bcrypt";
+import argon2 from "argon2";
 import userModel from "../models/user.model.js";
 import sessionModel from "../models/session.model.js";
 import passwordResetModel from "../models/passwordReset.model.js";
@@ -70,7 +70,10 @@ export async function resetPassword(req, res) {
         return res.status(400).json({ message: "Invalid or expired password reset link" });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 12);
+    const hashedPassword = await argon2.hash(password, {
+        type: argon2.argon2id,
+    });
+
     user.password = hashedPassword;
     await user.save();
 

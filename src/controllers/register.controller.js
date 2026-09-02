@@ -1,4 +1,4 @@
-import bcrypt from "bcrypt";
+import argon2 from "argon2";
 import userModel from "../models/user.model.js";
 import otpModel from "../models/otp.model.js";
 import { sendEmail } from "../services/email.service.js";
@@ -23,7 +23,9 @@ export async function register(req, res) {
         });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 12);
+    const hashedPassword = await argon2.hash(password, {
+        type: argon2.argon2id,
+    });
 
     const user = await userModel.create({
         userName,

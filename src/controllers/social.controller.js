@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import config from "../config/config.js";
+import crypto, { createPrivateKey } from "crypto";
 import sessionModel from "../models/session.model.js";
 import { hashSHA256 } from "../utils/crypto.utils.js";
 
@@ -20,9 +21,12 @@ export async function handleSocialCallback(req, res) {
 
     const refreshTokenHash = hashSHA256(refreshToken);
 
+    const familyId = crypto.randomUUID();
+
     // 2. Create Session
     const session = await sessionModel.create({
         user: user._id,
+        familyId,
         refreshTokenHash,
         ip: req.ip,
         userAgent: req.headers["user-agent"],

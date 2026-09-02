@@ -1,4 +1,4 @@
-import express from "express"
+import express from "express";
 import morgan from "morgan";
 import authRouter from "./routes/auth.route.js";
 import cookieParser from "cookie-parser";
@@ -12,7 +12,7 @@ app.use(helmet());
 const allowedOrigins = [
     "http://localhost:3000", // react default
     "http://localhost:5173", // vite default
-    "http://localhost:3001" ,// mine default
+    "http://localhost:3001", // mine default
     process.env.FRONTEND_URL // production frontend url (from .env file)
 ].filter(Boolean);
 

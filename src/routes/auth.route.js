@@ -1,11 +1,13 @@
 import { Router } from "express";
 import * as authController from "../controllers/auth.controller.js";
-import { registerLimiter, loginLimiter, otpLimiter, passwordResetLimiter } from "../middleware/ratelimit.middleware.js";
+import { registerLimiter, loginLimiter, otpLimiter, passwordResetLimiter, twoFactorLimiter } from "../middleware/ratelimit.middleware.js";
 import { validate } from "../middleware/validate.middleware.js";
 import { registerSchema, loginSchema, verifyEmailSchema } from "../validators/auth.validator.js";
 import { forgotPasswordSchema, resetPasswordSchema } from "../validators/password.validator.js";
 import passport from "../config/passport.js";
 import { handleSocialCallback } from "../controllers/social.controller.js";
+import { requireAuth } from "../middleware/auth.middleware.js";
+
 
 const authRouter = Router();
 
@@ -77,5 +79,31 @@ authRouter.get("/github", passport.authenticate("github", { scope: ["user:email"
  * GET /api/auth/github/callback
  */
 authRouter.get("/github/callback", passport.authenticate("github", { session: false, failureRedirect: "/login" }), handleSocialCallback);
+
+/**
+ * POST /api/auth/2fa/setup
+ */
+authRouter.post("/2fa/setup", requireAuth, authController.setup2FA);
+
+/**
+ * POST /api/auth/2fa/enable
+ */
+authRouter.post("/2fa/enable", requireAuth, authController.enable2FA);
+
+/**
+ * POST /api/auth/2fa/verify
+ */
+authRouter.post("/2fa/verify", twoFactorLimiter, authController.verify2FA);
+
+/**
+ * POST /api/auth/2fa/disable
+ */
+authRouter.post("/2fa/disable", requireAuth, authController.disable2FA);
+
+/**
+ * POST /api/auth/2fa/regenerate-backup-codes
+ */
+authRouter.post("/2fa/regenerate-backup-codes", requireAuth,authController.regenerateBackupCodesController);
+
 
 export default authRouter;

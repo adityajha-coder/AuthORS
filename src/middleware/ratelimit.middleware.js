@@ -43,3 +43,13 @@ export const passwordResetLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
 });
+
+export const twoFactorLimiter = rateLimit({
+    windowMs: 5 * 60 * 1000, // 5 minutes
+    max: 5,
+    message: {
+        message: "Too many 2FA verification attempts. Please try again after 5 minutes."
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
