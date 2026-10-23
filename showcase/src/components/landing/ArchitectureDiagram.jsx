@@ -28,7 +28,7 @@ export default function ArchitectureDiagram() {
         </div>
         <div className="p-4 sm:p-8 bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center transition-colors">
           <img
-            src="/assets/security_layers.png"
+            src={`${import.meta.env.BASE_URL}assets/security_layers.png`}
             alt="AuthORS 9-layer security architecture pipeline"
             className="rounded-xl max-w-full h-auto shadow-md"
             loading="lazy"

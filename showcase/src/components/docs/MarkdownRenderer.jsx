@@ -102,8 +102,9 @@ export default function MarkdownRenderer({ content }) {
             );
           },
           img({ src, alt }) {
-            const resolvedSrc = src?.startsWith('./') || src?.startsWith('../')
-              ? `/assets/${src.split('/').pop()}`
+            const fileName = src?.split('/').pop();
+            const resolvedSrc = src?.startsWith('./') || src?.startsWith('../') || src?.startsWith('/assets/')
+              ? `${import.meta.env.BASE_URL}assets/${fileName}`
               : src;
             return (
               <figure className="my-8 text-center">

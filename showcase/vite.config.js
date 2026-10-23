@@ -7,5 +7,6 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  base: process.env.VITE_BASE_PATH || (process.env.GITHUB_ACTIONS ? '/AuthORS/' : '/'),
   assetsInclude: ['**/*.md'],
 })
