@@ -1,0 +1,92 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+@import "highlight.js/styles/github-dark.css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  }
+
+  body {
+    min-height: 100vh;
+    background-color: var(--color-white);
+    color: var(--color-zinc-900);
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  .dark body,
+  html.dark body {
+    background-color: var(--color-zinc-950);
+    color: var(--color-zinc-100);
+  }
+}
+
+/* Light mode code block override */
+html:not(.dark) pre.hljs,
+html:not(.dark) .hljs {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+html:not(.dark) .hljs-keyword,
+html:not(.dark) .hljs-selector-tag,
+html:not(.dark) .hljs-subst {
+  color: #0969da !important;
+}
+
+html:not(.dark) .hljs-string,
+html:not(.dark) .hljs-title,
+html:not(.dark) .hljs-section,
+html:not(.dark) .hljs-attribute,
+html:not(.dark) .hljs-literal,
+html:not(.dark) .hljs-template-tag,
+html:not(.dark) .hljs-template-variable,
+html:not(.dark) .hljs-type,
+html:not(.dark) .hljs-addition {
+  color: #0a3069 !important;
+}
+
+html:not(.dark) .hljs-comment,
+html:not(.dark) .hljs-quote,
+html:not(.dark) .hljs-deletion {
+  color: #6e7781 !important;
+}
+
+html:not(.dark) .hljs-attr {
+  color: #116329 !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #27272a;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+}
+
+/* Highlight.js code override */
+pre code.hljs {
+  background: transparent !important;
+  padding: 0 !important;
+}
