@@ -1,0 +1,29 @@
+version: 2
+updates:
+  # Backend root dependencies
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - "dependencies"
+      - "security"
+
+  # Showcase documentation site dependencies
+  - package-ecosystem: "npm"
+    directory: "/showcase"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore(deps-showcase)"
+    labels:
+      - "dependencies"
+      - "showcase"

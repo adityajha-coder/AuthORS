@@ -847,9 +847,9 @@ Authorization: Bearer <accessToken>
 
 4. **Copy `.env.example`** to `.env` and set your credentials.
 
-
 ---
 
 ## 📄 License
 
+ISC License. Free to use and adapt for personal and commercial projects.
 ISC License. Free to use and adapt for personal and commercial projects.

@@ -324,6 +324,19 @@ AuthORS is architected to align with **NIST SP 800-63B Authenticator Assurance L
 
 ---
 
+## Automated DevSecOps Pipeline
+
+AuthORS employs an automated multi-stage security pipeline integrated directly into GitHub Actions:
+
+| Security Gate | Tool | Trigger | Scope & Protection |
+| :--- | :--- | :--- | :--- |
+| **CI & Syntax Validation** | GitHub Actions (`ci.yml`) | Push & PR (`main`) | Matrix validation on Node 20 & 22, syntax checks, dependency validation, and showcase build verification. |
+| **Secret Scanning** | **Gitleaks** (`gitleaks.yml`) | Push & PR (`main`) | Scans all commits and diffs against high-entropy regex patterns to block leaked credentials, API keys, or private tokens. |
+| **Static Code Analysis (SAST)** | **GitHub CodeQL** (`codeql.yml`) | Push, PR & Weekly | Deep semantic analysis scanning for injection vulnerabilities, CWE security flaws, and tainted data flows. |
+| **Supply Chain Security** | **Dependabot** (`dependabot.yml`) | Weekly & Security Advisories | Automated dependency vulnerability monitoring and automated security PRs for root backend and showcase frontend npm packages. |
+
+---
+
 ## 🚨 Vulnerability Disclosure & Responsible Reporting
 
 If you discover a security vulnerability within this repository, please report it responsibly by contacting me directly. Avoid creating public GitHub issues for sensitive security exploits.

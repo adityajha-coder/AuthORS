@@ -1,0 +1,21 @@
+[extend]
+# Extends default gitleaks rules
+
+[allowlist]
+description = "Global allowlist for documentation placeholders, environment examples, and build artifacts"
+paths = [
+  '''\.env\.example$''',
+  '''package-lock\.json$''',
+  '''showcase/dist/.*''',
+]
+regexes = [
+  '''your_jwt_secret_key''',
+  '''your_client_id''',
+  '''your_client_secret''',
+  '''your_refresh_token''',
+  '''your_github_client_id''',
+  '''your_github_client_secret''',
+  '''your_email@gmail\.com''',
+  '''47G74FGY2NVRB44U4QZ4L2R3MY4Q7A3X''',
+  '''f4a7c89b2134567890abcdef1234567890abcdef1234567890abcdef12345678''',
+]

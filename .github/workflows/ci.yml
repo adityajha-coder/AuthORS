@@ -1,0 +1,62 @@
+name: CI & Build Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  backend-checks:
+    name: Backend Validation (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20.x, 22.x]
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install Backend Dependencies
+        run: npm ci
+
+      - name: Verify Backend JavaScript Syntax
+        run: |
+          node --check src/server.js
+          node --check src/app.js
+
+      - name: Dependency Vulnerability Audit
+        run: npm audit --audit-level=high || true
+
+  showcase-build:
+    name: Showcase Frontend Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Install Showcase Dependencies
+        run: |
+          cd showcase
+          npm ci
+
+      - name: Build Showcase
+        run: |
+          cd showcase
+          npm run build
