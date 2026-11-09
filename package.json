@@ -13,7 +13,7 @@
   "author": "Aditya Jha",
   "license": "ISC",
   "dependencies": {
-    "argon2": "^0.45.1",
+    "argon2": "^0.45.2",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
